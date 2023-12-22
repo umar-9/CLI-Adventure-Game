@@ -192,7 +192,7 @@ void setup() {
 void use_item(Items item, House* current_room_ptr, std::vector <Items> &inventory, int &hp, bool &being_shielded) {
     if ((std::find((current_room_ptr -> interact).begin(), (current_room_ptr -> interact).end(), item.dependency) != (current_room_ptr -> interact).end()) or item.dependency == "") {
         if (item.dmg == 0) {
-            inventory.erase(std::remove(inventory.begin(), inventory.end(), item.name), inventory.end());
+            inventory.erase(std::find(inventory.begin(), inventory.end(), item.name));
             std::cout << item.name << " has been expended.\n";
             (current_room_ptr -> interact).erase(std::remove((current_room_ptr -> interact).begin(), (current_room_ptr -> interact).end(), item.dependency), (current_room_ptr -> interact).end());
 
