@@ -1,3 +1,7 @@
+#ifndef CLASSES_H
+#define CLASSES_H
+
+
 #include <vector>
 #include <iostream>
 #include <map>
@@ -13,17 +17,27 @@ public:
     std::string name;
     std::string dependency;
     int dmg;
+    bool expendable;
     
-    Items (std::string name_in = "", std::string item_dependency = "", int damage = 0) {
+    Items (std::string name_in = "", std::string item_dependency = "", int damage = 0, bool is_expendable = true) {
         name = name_in;
         dependency = item_dependency;
         dmg = damage;
+        expendable = is_expendable;
     }
 
-    bool operator==(const std::string &x) {
-        return (name == x);
+    bool operator==(const Items& other) {
+        return (name == other.name);
     }
 
+    friend std::ostream& operator<<(std::ostream& os, const Items& item) {
+        os << item.name;
+        return os;
+    }
+
+    void set_name(std::string name_in) {
+        name = name_in;
+    }
 };
 
 
@@ -47,7 +61,7 @@ public:
     void action(int &player_hp){
         std::cout << name << " stats: \n";
         std::cout << "\tHitpoints: " << hp << "; Damage: " << dmg << "\n";
-        std::string move = (can_move) ? "\tThis monster can move beween rooms, and will follow you!\n" : "\tThis monster cannot move between rooms.\n\n";
+        std::string move = (can_move) ? "\tThis monster can move between rooms, and will follow you!\n" : "\tThis monster cannot move between rooms.\n\n";
         std::cout << move;
 
         player_hp -= dmg;
@@ -93,50 +107,16 @@ public:
     void add_location (std::string direction, House* room) {
         locations[direction] = room;
     }
+
+    void add_item (Items item) {
+        items.push_back(item);
+    }
+
+    void add_interact (std::string new_interaction) {
+        interact.push_back(new_interaction);
+    }
 };
 
 
 
-void print_vector(std::vector<std::string> arr) {
-    for (auto i : arr) {
-        std::cout << i;
-        if (!(i == arr[arr.size() - 1])) {
-            std::cout << ", ";
-        }
-    }
-    std::cout << '\n';
-}
-
-void print_vector(std::vector<Items> arr){
-    for (auto i : arr) {
-        std::cout << i.name;
-        if (!(i == arr[arr.size() - 1].name)) {
-            std::cout << ", ";
-        }
-    }
-    std::cout << '\n';
-}
-
-
-
-void erase_monster(House* current_ptr, std::vector<Monsters>::iterator monster_it, std::string monster_name) {
-    (current_ptr -> monsters).erase(monster_it);
-    (current_ptr -> interact).erase(std::remove((current_ptr -> interact).begin(), (current_ptr -> interact).end(), monster_name), (current_ptr -> interact).end());
-}
-
-
-
-std::string capitalise(std::string input) {
-    std::string cap_string = input;
-    bool capitalise_next = true;
-    for (auto &c : cap_string) {
-        if (std::isspace(c)) {
-            capitalise_next = true;
-        } else if (capitalise_next) {
-            c = std::toupper(c);
-            capitalise_next = false;
-        }
-    }
-    return cap_string;
-}
-
+#endif

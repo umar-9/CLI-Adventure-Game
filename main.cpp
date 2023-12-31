@@ -1,53 +1,66 @@
-#include "main.h"
-
+#include "classes.h"
+#include "helpers.h"
 
 Items med_bag ("Medical Bag", "");
-const int med_bag_heal = 50;
+const int med_bag_heal = 60;
 Items shield ("Shield", "");
-Items key ("Key", "Chest");
-Items drill ("Drill", "Safe");
+Items key ("Key", "Chest with a lock");
+Items sledgehammer ("Sledgehammer", "Locked Shed (without a lock)");
+Items usb ("Usb", "Laptop");
+Items code ("Code 000", "Safe (3-digit pin)", 0, false);
 
-Items sword("Sword", "", 50);
-Items knife("Knife", "", 20);
-Items revolver("Old Revolver", "", 30);
+Items sword("Sword", "", 50, true);
+Items knife("Knife", "", 30, true);
+Items revolver("Old Revolver", "", 30, true);
 const int revolver_chance = 3;
 
 Monsters std_monster ("Monster", 50, 15, false);
 Monsters buff_monster ("Buff Monster", 100, 20, false);
 Monsters minion ("Minion", 20, 5, true);
 
-House hall ("Hall", {med_bag}, {"Chest"});
-House kitchen ("Kitchen", {knife, shield, med_bag});
-House bedroom ("Bedroom", {drill});
-House garden ("Garden", {key}, {"Safe"});
+House hall ("Hall", {}, {"Chest with a lock"});
+House kitchen ("Kitchen", {}, {});
+House dining_room ("Dining Room");
+House bedroom ("Bedroom", {key}, {"Laptop", "Safe (3-digit pin)"});
+House garden ("Garden", {sledgehammer}, {"Locked Shed (without a lock)"});
+House shed ("Shed", {}, {});
 House stairwell("Stairwell", {revolver});
-House basement("Basement", {}, {"Cellar Doors"});
+House basement("Basement", {}, {"Locked Cellar Doors (you see it is an electronic lock)"});
 House escape ("Outside");
 
+//key+chest gives sword/
+//usb+laptop opens cellar doors (escape)
+//924+safe gives usb (Code 924 is added to inventory (add condition for inventory size) but isn't printed: "Use Code 924")
+//drill+lockedshed gives shed
 
 void use_item(Items item, House* current_room_ptr, std::vector <Items> &inventory, int &hp, bool &being_shielded);
 void setup();
 
-
+// Add difficulty levels using command line args
+// Make damage per second
 int main() {
     House* current_ptr = &hall;
     House* prev_ptr = &hall;
     bool escaped = false;
     int hitpoints = 100;
-    std::vector<Items> inventory;
+    int max_inventory_size = 4;
+    std::vector<Items> inventory = {code};
+    std::vector<Items> hidden_items = {code};
     bool shielded = false;
 
     setup();
 
     while (escaped == false && hitpoints > 0) {
-        std::cout << "\nYou are in the " << current_ptr -> name << '\n';
-        std::cout << "Hitpoints: " << hitpoints << '\n';
+        std::cout << '\n';
+        std::cout << "Location: " << current_ptr -> name << '\t' << '\t';
+        std::cout << "Hitpoints: " << hitpoints << '\t' << '\t';
         std::cout << "Inventory: ";
-        print_vector(inventory);
+        print_vector(inventory, hidden_items);
+        std::cout << '\n';
 
         if ((current_ptr -> items).size() != 0) {
             std::cout << "You see the following items: ";
-            print_vector(current_ptr -> items);
+            print_vector(current_ptr -> items, hidden_items);
         }
 
         if ((current_ptr -> interact).size() != 0) {
@@ -68,35 +81,32 @@ int main() {
 
         prev_ptr = current_ptr;   
         
-        std::cout << "\n-------------------------------------------------------\n";    
         std::cout << "\nChoose your next action: ";
         std::string input;
         std::getline(std::cin, input);
-        input = capitalise(input);
+        clean(input);
+        system("CLS");
 
-        if (input == "help" or input == "Help") {
-            std::cout << "\nActions (case sensitive):\n";
-            std::cout << "\tEnter: North, South, East, or West\n";
-            std::cout << "\tEnter: Grab <Item>\n";
-            std::cout << "\tEnter: Use <Item>\n";
-            std::cout << "\tEnter: Drop <Item>\n";
-            std::cout << "You can have a maximum of 3 items in your inventory.\n";
-
-        } else if ((current_ptr -> locations).count(input)) {
-            current_ptr = (current_ptr -> locations).at(input);
-            std::cout << "You are now moving to: " << current_ptr -> name <<'\n';
-        
-        } else if (input.substr(0,4) == "Grab" or input.substr(0,4) == "grab") {
-            std::string item_req = input.substr(5,input.size()-4);
+        if (input.find("Help") != std::string::npos) {
+            help();
+        } else if (input == "North" || input == "East" || input == "South" || input == "West") { 
+            if ((current_ptr -> locations).count(input)) {
+                current_ptr = (current_ptr -> locations).at(input);
+                std::cout << "You are now moving to: " << current_ptr -> name << '\n';
+            } else {
+                std::cout << "You cannot go that way\n";
+            }
+        } else if (input.substr(0,4) == "Grab") {
+            std::string item_req = capitalise(input.substr(5,input.size()-4));
             auto it = std::find((current_ptr -> items).begin(), (current_ptr -> items).end(), item_req);
 
             if (it != (current_ptr -> items).end()) {
                 int index = std::distance((current_ptr -> items).begin(), it);
                 Items current_item = (current_ptr -> items)[index];
-                if (inventory.size() != 3) {
+                if (inventory.size() != max_inventory_size) {
                     std::cout << "Nice find! \n";
                     inventory.push_back(current_item);
-                    (current_ptr -> items).erase(std::remove((current_ptr -> items).begin(), (current_ptr -> items).end(), item_req), (current_ptr -> items).end());
+                    (current_ptr -> items).erase(std::find((current_ptr -> items).begin(), (current_ptr -> items).end(), item_req));
                 } else {
                     std::cout << "You already have the maximum inventory size\n";
                 }
@@ -104,8 +114,8 @@ int main() {
                 std::cout << "This item does not exist\n";
             }
         
-        } else if (input.substr(0,3) == "Use" or input.substr(0,3) == "use") {
-            std::string item_req = input.substr(4,input.size()-3);
+        } else if (input.substr(0,3) == "Use") {
+            std::string item_req = capitalise(input.substr(4,input.size()-3));
             auto it = std::find(inventory.begin(), inventory.end(), item_req);
             if (it != inventory.end()) {
                 int index = std::distance(inventory.begin(), it);
@@ -114,8 +124,8 @@ int main() {
                 std::cout << "You don't have this item\n";
             }
         
-        } else if (input.substr(0,4) == "Drop" or input.substr(0,4) == "drop") {
-            std::string item_req = input.substr(5,input.size()-4);
+        } else if (input.substr(0,4) == "Drop") {
+            std::string item_req = capitalise(input.substr(5,input.size()-4));
             auto it = std::find(inventory.begin(), inventory.end(), item_req);
             if (it != inventory.end()) {
                 int index = std::distance(inventory.begin(), it);
@@ -129,8 +139,7 @@ int main() {
         
 
         } else {
-            std::cout << "Invalid action or direction (there may not be a door there).\n";
-            std::cout << "\t(Type 'help' if you need a list of allowed actions).";
+            std::cout << "Invalid action or Syntax Error (Type 'help' if you need a list of allowed actions).\n";
         }
             
         auto it = (std::find_if((prev_ptr -> monsters).begin(), (prev_ptr -> monsters).end(), [] (Monsters i) {return i.can_move;}));
@@ -142,7 +151,7 @@ int main() {
         }
 
         if (hitpoints < 1) {
-            std::cout << "\nYou died...\n\n";
+            std::cout << "\n\nYou died...\n\n";
         }
         else if (current_ptr -> name == "Outside") {
             std::cout << "\nCongratulations! You have escaped!\n\n";
@@ -159,8 +168,8 @@ int main() {
 void setup() {
 
     std::cout << "\nWelcome to the House of Horrors.\nIf you can escape, you earn your freedom. Good Luck!\nType 'help' for a guide.\n";
-    std::cout << "You will see various items in different rooms. \nType Grab <Item> to pick it up, Drop <Item> to drop it (you only have 3 spaces in your inventory), and Use <Item> to use it. \nSome items in rooms cannot be picked up, but can be interacted with using items in your inventory.\n";
-    std::cout << "Enter: North, South, East, or West to move rooms.\n";
+    help();
+    system("PAUSE");
     const std::vector<std::string> compass = {"North", "East", "South", "West"};
     srand(time(NULL));
     int shift = std::rand() % compass.size();
@@ -175,22 +184,43 @@ void setup() {
     kitchen.add_location(compass[(1+shift) % compass.size()], &garden);
     bedroom.add_location(compass[(3+shift) % compass.size()], &hall);
     garden.add_location(compass[(3+shift) % compass.size()], &kitchen);
+    dining_room.add_location(compass[(1+shift) % compass.size()], &kitchen);
+    dining_room.add_location(compass[(2+shift) % compass.size()], &stairwell);
+    stairwell.add_location(compass[(0+shift) % compass.size()], &dining_room);
+    kitchen.add_location(compass[(3+shift) % compass.size()], &dining_room);
+    shed.add_location(compass[(3+shift) % compass.size()], &garden);
 
-    std::vector<House*> rooms = {&kitchen, &bedroom, &garden, &basement};
+
+    const std::vector<House*> spawning_rooms = {&kitchen, &bedroom, &garden, &basement};
     const std::vector<Monsters> monsters = {std_monster, buff_monster, minion};
+    const std::vector<Items> items = {knife, shield, med_bag, med_bag};
+    const int length_of_safe_pin = 3;
 
-    srand(time(NULL));
     for (int i = 0; i < monsters.size(); i++) {
-        int monster_rand = std::rand() % rooms.size();
-        rooms[monster_rand] -> add_monster(monsters[i]);
+        int monster_rand = std::rand() % spawning_rooms.size();
+        spawning_rooms[monster_rand] -> add_monster(monsters[i]);
     }
+
+    for (int i = 0; i < items.size(); i++) {
+        int item_rand = std::rand() % spawning_rooms.size();
+        spawning_rooms[item_rand] -> add_item(items[i]);
+    }
+
+    std::string pin;
+    for (int i = 0; i < length_of_safe_pin; i++) {
+        pin[i] = '0' + (std::rand() % 10);
+    }
+    pin[length_of_safe_pin] = '\0';
+    code.set_name("Code " + pin);
+    kitchen.add_interact("The number " + std::to_string(pin[0]) + " written on a fridge magnet");
+    shed.add_interact("The number " + std::to_string(pin[1]) + std::to_string(pin[2]) + " written on two pieces of paper");
 }
 
 
 
 
 void use_item(Items item, House* current_room_ptr, std::vector <Items> &inventory, int &hp, bool &being_shielded) {
-    if ((std::find((current_room_ptr -> interact).begin(), (current_room_ptr -> interact).end(), item.dependency) != (current_room_ptr -> interact).end()) or item.dependency == "") {
+    if ((std::find((current_room_ptr -> interact).begin(), (current_room_ptr -> interact).end(), item.dependency) != (current_room_ptr -> interact).end()) || item.dependency == "") {
         if (item.dmg == 0) {
             inventory.erase(std::find(inventory.begin(), inventory.end(), item.name));
             std::cout << item.name << " has been expended.\n";
@@ -216,13 +246,19 @@ void use_item(Items item, House* current_room_ptr, std::vector <Items> &inventor
 
 
     if (item.name == key.name) {
-        std::cout << "You have received a sword! \n";
+        std::cout << "The chest opened! You have received a sword! \n";
         inventory.push_back(sword);
-
-    } else if (item.name == drill.name) {
+    } else if (item.name == code.name) {
+        std::cout << "The safe opened! You have received a USB stick! \n";
+        inventory.push_back(usb);
+    } else if (item.name == usb.name) {
         basement.add_location("North", &escape);
+        basement.add_location("South", &escape);
+        basement.add_location("West", &escape);
         std::cout << "Something seems to have opened somewhere...\n";
-    
+    } else if (item.name == sledgehammer.name) {
+        garden.add_location("East", &shed);
+        std::cout << "You've broken the shed door down.\n";
     } else if (item.name == med_bag.name) {
         hp += med_bag_heal;
         if (hp > 100) hp = 100;
