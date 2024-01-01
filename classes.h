@@ -10,7 +10,8 @@
 #include <random>
 #include <time.h>
 #include <cctype>
-
+#include <fstream>
+#include <filesystem>
 
 class Items {
 public:

@@ -24,16 +24,14 @@ House bedroom ("Bedroom", {key}, {"Laptop", "Safe (3-digit pin)"});
 House garden ("Garden", {sledgehammer}, {"Locked Shed (without a lock)"});
 House shed ("Shed", {grenade}, {});
 House stairwell("Stairwell", {revolver});
-House basement("Basement", {}, {"Locked Cellar Doors (you see it is an electronic lock)"});
+House basement("Basement", {}, {"Locked Cellar Doors"});
 House escape ("Outside");
 
 
 void use_item(Items item, House* current_room_ptr, std::vector <Items> &inventory, int &hp, bool &being_shielded);
 std::string setup();
 
-// Make damage per second
-// Add timer
-// Print results to text file
+
 int main() {
     House* current_ptr = &hall;
     House* prev_ptr = &hall;
@@ -46,6 +44,8 @@ int main() {
     code.set_name("Code " + setup());
     inventory.push_back(code);
     std::vector<Items> hidden_items = {code};
+
+    int start_time = time(NULL);
 
     while (escaped == false && hitpoints > 0) {
         std::cout << '\n';
@@ -153,6 +153,48 @@ int main() {
         else if (current_ptr -> name == "Outside") {
             std::cout << "\nCongratulations! You have escaped!\n\n";
             escaped = true;
+            int time_to_escape = time(NULL) - start_time;
+            std::cout << "You took " << time_to_escape << " seconds to escape!\n";
+            std::string str_personal_best;
+            int personal_best;
+            std::string filename = "record.txt";
+            if (!std::filesystem::exists(filename)) {
+                std::ofstream Record_file(filename);
+                if (Record_file.is_open()) {
+                    std::cout << "Record file created successfully.\n";
+                    Record_file << "999999999\n";
+                    Record_file.close();
+                } else {
+                    std::cerr << "Error creating the record file.\n";
+                    return 1;
+                }
+            }
+
+            std::ifstream Record_file("record.txt");
+            if (!Record_file.is_open()) {
+                std::cout << "Record file could not be opened.\n";
+                return 1;
+            }
+            std::getline (Record_file, str_personal_best);
+            try {
+                personal_best = std::stoi(str_personal_best);
+            } catch (const std::out_of_range& oor) {
+                std::cerr << "You took too long to escape...\n";
+                return 0;
+            }
+            Record_file.close();
+            if (time_to_escape < personal_best) {
+                std::ofstream Record_file("record.txt");
+                if (!Record_file.is_open()) {
+                    std::cout << "Record file could not be opened.\n";
+                    return 1;
+                }
+                Record_file << time_to_escape;
+                Record_file.close();
+                std::cout << "You beat your personal record of " << personal_best << " by " << (personal_best - time_to_escape) << " seconds!\n";
+            } else {
+                std::cout << "Your personal best is " << personal_best << "\n";
+            }
         }
     }
     system("PAUSE");
@@ -264,6 +306,7 @@ void use_item(Items item, House* current_room_ptr, std::vector <Items> &inventor
             basement.add_location(i, &escape);
         }
         std::cout << "Something seems to have opened somewhere...\n";
+        basement.interact.erase(std::find(basement.interact.begin(), basement.interact.end(), "Locked Cellar Doors"));
     } else if (item == sledgehammer) {
         for (int i = 0; i < compass.size(); i++) {
             if (shed.locations.count(compass[i]) && shed.locations[compass[i]] == &garden) {

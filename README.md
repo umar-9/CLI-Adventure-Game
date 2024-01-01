@@ -9,6 +9,7 @@ There may be other things which you may be able to interact with using another i
 If you see a safe with a pin, you can open it with "Use Code \<code>"<br>
 There are only 3 spaces in your inventory, therefore, to drop an item, type "Drop <item>"<br>
 Monsters will also spawn randomly in various rooms. Some may follow you, others will not. To kill them, find an item that can deal damage and use it<br>
+Your personal best (in seconds) for escaping is recorded in the text file "record.txt"<br>
 
 Note that capitalisation does not matter, but typos will not be automatically corrected by the program<br>
 
