@@ -23,9 +23,12 @@ RELEASE_TARGET = $(TARGET)_release
 DEBUG_CXXFLAGS = -g
 DEBUG_TARGET = $(TARGET)_debug
 
+# Static linking flags
+LDFLAGS = -static
+
 # Build rules
 release: $(OBJ_FILES)
-	$(CXX) $(RELEASE_CXXFLAGS) -o $(RELEASE_TARGET) $(OBJ_FILES)
+	$(CXX) $(RELEASE_CXXFLAGS) $(LDFLAGS) -o $(RELEASE_TARGET) $(OBJ_FILES)
 
 debug: $(OBJ_FILES)
 	$(CXX) $(DEBUG_CXXFLAGS) -o $(DEBUG_TARGET) $(OBJ_FILES)
