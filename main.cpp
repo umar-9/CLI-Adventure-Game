@@ -128,7 +128,7 @@ int main() {
                 int index = std::distance(inventory.begin(), it);
                 Items current_item = inventory[index];
                 current_ptr -> items.push_back(current_item);
-                inventory.erase(std::remove(inventory.begin(), inventory.end(), item_req), inventory.end());
+                inventory.erase(std::find(inventory.begin(), inventory.end(), item_req));
                 std::cout << item_req << " has been dropped." << "\n";
             } else {
                 std::cout << "You don't have this item\n";
