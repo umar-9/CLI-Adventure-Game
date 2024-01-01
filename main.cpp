@@ -1,54 +1,51 @@
 #include "classes.h"
 #include "helpers.h"
 
-Items med_bag ("Medical Bag", "");
-const int med_bag_heal = 60;
+Items med_bag ("Medical Bag", "", 0, true, 60);
 Items shield ("Shield", "");
-Items key ("Key", "Chest with a lock");
+Items key ("Key", "Chest With A Lock");
 Items sledgehammer ("Sledgehammer", "Locked Shed (without a lock)");
 Items usb ("Usb", "Laptop");
 Items code ("Code 000", "Safe (3-digit pin)", 0, false);
 
-Items sword("Sword", "", 50, true);
-Items knife("Knife", "", 30, true);
-Items revolver("Old Revolver", "", 30, true);
-const int revolver_chance = 3;
+Items sword("Sword", "", 50, false);
+Items knife("Knife", "", 30, false);
+Items revolver("Old Revolver", "", 30, false, 0, 3);
+Items grenade("Grenade", "", 70, true, -10);
 
 Monsters std_monster ("Monster", 50, 15, false);
-Monsters buff_monster ("Buff Monster", 100, 20, false);
+Monsters buff_monster ("Buff Monster", 100, 15, false);
 Monsters minion ("Minion", 20, 5, true);
 
-House hall ("Hall", {}, {"Chest with a lock"});
+House hall ("Hall", {}, {"Chest With A Lock"});
 House kitchen ("Kitchen", {}, {});
 House dining_room ("Dining Room");
 House bedroom ("Bedroom", {key}, {"Laptop", "Safe (3-digit pin)"});
 House garden ("Garden", {sledgehammer}, {"Locked Shed (without a lock)"});
-House shed ("Shed", {}, {});
+House shed ("Shed", {grenade}, {});
 House stairwell("Stairwell", {revolver});
 House basement("Basement", {}, {"Locked Cellar Doors (you see it is an electronic lock)"});
 House escape ("Outside");
 
-//key+chest gives sword/
-//usb+laptop opens cellar doors (escape)
-//924+safe gives usb (Code 924 is added to inventory (add condition for inventory size) but isn't printed: "Use Code 924")
-//drill+lockedshed gives shed
 
 void use_item(Items item, House* current_room_ptr, std::vector <Items> &inventory, int &hp, bool &being_shielded);
-void setup();
+std::string setup();
 
-// Add difficulty levels using command line args
 // Make damage per second
+// Add timer
+// Print results to text file
 int main() {
     House* current_ptr = &hall;
     House* prev_ptr = &hall;
     bool escaped = false;
     int hitpoints = 100;
-    int max_inventory_size = 4;
-    std::vector<Items> inventory = {code};
-    std::vector<Items> hidden_items = {code};
+    const int max_inventory_size = 4;
+    std::vector<Items> inventory;
     bool shielded = false;
 
-    setup();
+    code.set_name("Code " + setup());
+    inventory.push_back(code);
+    std::vector<Items> hidden_items = {code};
 
     while (escaped == false && hitpoints > 0) {
         std::cout << '\n';
@@ -59,12 +56,12 @@ int main() {
         std::cout << '\n';
 
         if ((current_ptr -> items).size() != 0) {
-            std::cout << "You see the following items: ";
+            std::cout << "The following items are in the room: ";
             print_vector(current_ptr -> items, hidden_items);
         }
 
         if ((current_ptr -> interact).size() != 0) {
-            std::cout << "You see the following in the room: ";
+            std::cout << "You see the following things in the room: ";
             print_vector(current_ptr -> interact);
         }
 
@@ -158,14 +155,13 @@ int main() {
             escaped = true;
         }
     }
-    std::string a;
-    std::cin >> a;
+    system("PAUSE");
     return 0;
 }
 
 
 
-void setup() {
+std::string setup() {
 
     std::cout << "\nWelcome to the House of Horrors.\nIf you can escape, you earn your freedom. Good Luck!\nType 'help' for a guide.\n";
     help();
@@ -190,8 +186,7 @@ void setup() {
     kitchen.add_location(compass[(3+shift) % compass.size()], &dining_room);
     shed.add_location(compass[(3+shift) % compass.size()], &garden);
 
-
-    const std::vector<House*> spawning_rooms = {&kitchen, &bedroom, &garden, &basement};
+    const std::vector<House*> spawning_rooms = {&kitchen, &dining_room, &bedroom, &garden, &basement};
     const std::vector<Monsters> monsters = {std_monster, buff_monster, minion};
     const std::vector<Items> items = {knife, shield, med_bag, med_bag};
     const int length_of_safe_pin = 3;
@@ -206,65 +201,78 @@ void setup() {
         spawning_rooms[item_rand] -> add_item(items[i]);
     }
 
-    std::string pin;
+    std::string pin = "";
     for (int i = 0; i < length_of_safe_pin; i++) {
-        pin[i] = '0' + (std::rand() % 10);
+        pin += '0' + (std::rand() % 10);
     }
-    pin[length_of_safe_pin] = '\0';
-    code.set_name("Code " + pin);
-    kitchen.add_interact("The number " + std::to_string(pin[0]) + " written on a fridge magnet");
-    shed.add_interact("The number " + std::to_string(pin[1]) + std::to_string(pin[2]) + " written on two pieces of paper");
+
+    kitchen.add_interact("The number " + std::to_string(pin[0] - '0') + " written on a fridge magnet");
+    shed.add_interact("The number " + std::to_string(pin[1] - '0') + std::to_string(pin[2] - '0') + " written on two pieces of paper");
+    return pin;
 }
 
 
 
 
 void use_item(Items item, House* current_room_ptr, std::vector <Items> &inventory, int &hp, bool &being_shielded) {
-    if ((std::find((current_room_ptr -> interact).begin(), (current_room_ptr -> interact).end(), item.dependency) != (current_room_ptr -> interact).end()) || item.dependency == "") {
-        if (item.dmg == 0) {
-            inventory.erase(std::find(inventory.begin(), inventory.end(), item.name));
-            std::cout << item.name << " has been expended.\n";
-            (current_room_ptr -> interact).erase(std::remove((current_room_ptr -> interact).begin(), (current_room_ptr -> interact).end(), item.dependency), (current_room_ptr -> interact).end());
-
-        } else if ((current_room_ptr -> monsters).size() != 0) {
-            if (item.name == revolver.name) {
-                if (std::rand() % revolver_chance == 0) {
-                    std::cout << "The old revolver jammed and did not fire...\n";
-                    return;
-                }
-            }
-            if ((current_room_ptr -> monsters[0]).kill(item.dmg) == 0) {
-                erase_monster(current_room_ptr, (current_room_ptr -> monsters).begin(), current_room_ptr -> monsters[0].name);
-            }
-        }
     
-    } else {
+    if ((std::find((current_room_ptr -> interact).begin(), (current_room_ptr -> interact).end(), item.dependant) == (current_room_ptr -> interact).end()) && item.dependant != "") {
         std::cout << "There's nothing in this room to use this item for.\n";
         return;
     }
-    
 
+    if (std::rand() % item.chance_failure == 0) {
+        std::cout << "The " << item.name << " jammed and failed to work.\n";
+        return;
+    }
 
-    if (item.name == key.name) {
+    if (item.is_expendable == true) {
+        inventory.erase(std::find(inventory.begin(), inventory.end(), item.name));
+        std::cout << item.name << " has been expended.\n";
+    }
+
+    (current_room_ptr -> interact).erase(std::remove((current_room_ptr -> interact).begin(), (current_room_ptr -> interact).end(), item.dependant), (current_room_ptr -> interact).end());
+    item.health(hp);
+
+    int total_number_of_monsters = (current_room_ptr->monsters).size();
+    int number_of_monsters_affected;
+    if (item == grenade) {
+        number_of_monsters_affected = total_number_of_monsters;
+    } else if (item == sword) {
+        number_of_monsters_affected = 2;
+    } else {
+        number_of_monsters_affected = 1;
+    }
+    int x = 0;
+    for (int i = 0; i < total_number_of_monsters && i < number_of_monsters_affected; i++) {
+        if ((current_room_ptr->monsters)[x].kill(item.dmg) == 0) {
+            auto monster_it = std::find((current_room_ptr -> monsters).begin(), (current_room_ptr -> monsters).end(), (current_room_ptr->monsters)[x]);
+            erase_monster(current_room_ptr, monster_it, (current_room_ptr->monsters)[x].name);
+        } else x++;
+    }
+
+    const std::vector<std::string> compass = {"North", "East", "South", "West"};
+
+    if (item == key) {
         std::cout << "The chest opened! You have received a sword! \n";
         inventory.push_back(sword);
-    } else if (item.name == code.name) {
+    } else if (item == code) {
         std::cout << "The safe opened! You have received a USB stick! \n";
         inventory.push_back(usb);
-    } else if (item.name == usb.name) {
-        basement.add_location("North", &escape);
-        basement.add_location("South", &escape);
-        basement.add_location("West", &escape);
+    } else if (item == usb) {
+        for (auto i : compass) {
+            basement.add_location(i, &escape);
+        }
         std::cout << "Something seems to have opened somewhere...\n";
-    } else if (item.name == sledgehammer.name) {
-        garden.add_location("East", &shed);
+    } else if (item == sledgehammer) {
+        for (int i = 0; i < compass.size(); i++) {
+            if (shed.locations.count(compass[i]) && shed.locations[compass[i]] == &garden) {
+                if (i+2 > compass.size()) garden.add_location(compass[i-2], &shed);
+                else garden.add_location(compass[i+2], &shed);
+            }
+        }
         std::cout << "You've broken the shed door down.\n";
-    } else if (item.name == med_bag.name) {
-        hp += med_bag_heal;
-        if (hp > 100) hp = 100;
-        std::cout << "Healed!\n";
-    
-    } else if (item.name == shield.name) {
+    } else if (item == shield) {
         being_shielded = true;
         std::cout << "The next time a monster attacks, you will not take any damage, and any minions will not follow you for one turn!\n";
     }

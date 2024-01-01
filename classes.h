@@ -15,15 +15,19 @@
 class Items {
 public:
     std::string name;
-    std::string dependency;
+    std::string dependant;
     int dmg;
-    bool expendable;
+    int health_effect;
+    int chance_failure;
+    bool is_expendable;
     
-    Items (std::string name_in = "", std::string item_dependency = "", int damage = 0, bool is_expendable = true) {
+    Items (std::string name_in = "", std::string item_dependant = "", int damage = 0, bool is_expendable_in = true, int player_health_effect = 0, int reciprocal_chance_of_failure = 1000000) {
         name = name_in;
-        dependency = item_dependency;
+        dependant = item_dependant;
         dmg = damage;
-        expendable = is_expendable;
+        health_effect = player_health_effect;
+        chance_failure = reciprocal_chance_of_failure;
+        is_expendable = is_expendable_in;
     }
 
     bool operator==(const Items& other) {
@@ -37,6 +41,17 @@ public:
 
     void set_name(std::string name_in) {
         name = name_in;
+    }
+
+    void health(int &hp) {
+        if (health_effect > 0) {
+            hp += health_effect;
+            if (hp > 100) hp = 100;
+            std::cout << "Healed!\n";
+        } else if (health_effect < 0) {
+            hp += health_effect;
+            std::cout << "You took damage from this item!\n";
+        }
     }
 };
 
@@ -68,12 +83,15 @@ public:
     }
 
     int kill(int damage_to_monster) {
+        if (damage_to_monster == 0) {
+            return hp;
+        }
         hp -= damage_to_monster;
         if (hp < 1) {
             std::cout << "You have slain the " << name << "!\n";
             return 0;
         }
-        std::cout << "You made the " << name << " take " << damage_to_monster << " damage!\nThe monster now has " << hp << " hitpoints!\n";
+        std::cout << "You made the " << name << " take " << damage_to_monster << " damage! " << name << " now has " << hp << " hitpoints.\n";
         return hp;
     }
 
@@ -115,6 +133,7 @@ public:
     void add_interact (std::string new_interaction) {
         interact.push_back(new_interaction);
     }
+    
 };
 
 
