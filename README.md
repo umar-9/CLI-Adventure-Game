@@ -60,7 +60,7 @@ Each room has a name, a list of items inside it, a hash map of compass direction
 #### Stats for monsters:
 
 - Monster: 50 HP, Deals 15 damage, does not follow you
-- Buff Monster: 100 HP, Deals 20 damage, does not follow you
+- Buff Monster: 100 HP, Deals 15 damage, does not follow you
 - Minion: 20 HP, Deals 5 damage, does follow you
 
 ### Walkthrough
